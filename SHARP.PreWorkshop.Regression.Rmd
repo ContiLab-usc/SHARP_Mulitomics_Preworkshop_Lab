@@ -348,7 +348,11 @@ ridge.fit <- glmnet(x=X, y=Y, family="gaussian", alpha=0)
 ##### Ridge Results: {.tabset}
 ###### Ridge Selection of $\lambda$ via Cross Validation
 ```{r Regression: Ridge Cross Validation}
-if(ridge) { plot(ridge.cv) }
+if(ridge) {
+  plot(ridge.cv)
+  abline(v=log(ridge.cv$lambda.min), lty=2, col="red")
+  abline(v=log(ridge.cv$lambda.1se), lty=2, col="green")
+}
 ```
 
 ###### Ridge Coefficient Shrinkage

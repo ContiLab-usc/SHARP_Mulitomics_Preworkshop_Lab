@@ -74,7 +74,7 @@ univariate <- T
 ridge <- T
 lasso <- T
 elasticnet <- T
-bayesian.selection <- T
+bayesian.selection <- F
 
 ```
 
@@ -314,7 +314,8 @@ if(elasticnet) { elasticnet.coef }
 if(bayesian.selection) { 
   U <- U[,2:ncol(U)]
   reg.bas <- bas.glm(Y~X+U, family = binomial(link = "logit"),
-                   betaprior = bic.prior(), modelprior=beta.binomial(1,P),
+                   betaprior = g.prior(N),
+                   modelprior=beta.binomial(1,P),
                    include.always = ~U)
   coef.bas <- coef(reg.bas, estimator="BMA")
   coef.r <- data.frame(c("Intercept", exposure.Names, names(as.data.frame(U))), coef.bas$postmean, coef.bas$postsd,coef.bas$probne0)
