@@ -62,7 +62,7 @@ This is not a comprehensive example of a GWAS analysis and is designed to provid
 outcome.Name <- "hs_bmi_c_cat" # "hs_asthma" # "hs_bmi_c_cat" "hs_zbmi_who"
 
 # Covariates
-covariate.Names <- c("h_mbmi_None","e3_sex_None","h_age_None","h_cohort","h_edumc_None","ethn_PC1","ethn_PC2") 
+covariate.Names <- c("h_mbmi_None","e3_sex_None","h_age_None","h_cohort","h_edumc_None","ethn_PC1",     "ethn_PC2", "h_ethnicity_cauc")
 
 # SNPs
 snp.Names <- paste("SNP", 1:1000, sep=".")
@@ -77,11 +77,30 @@ univariate <- T
 ```{r Genome: Processing the Data, echo=TRUE}
 load(paste0(work.dir, "/Data/HELIX.MultiAssayExperiment.RData")) # not recommended way of storing genomewide data
 
-variables <- c(covariate.Names, "h_ethnicity_cauc", snp.Names)
-d <- wideFormat(intersectColumns(helix_ma[variables, ,]), colDataCols=outcome.Name) # 1) select variables but keep in MultiAssayExperiment format; 2) intersectionColumns selects only individuals with complete data; 3) wideFormat returns as a DataFrame
+variables <- c(covariate.Names, snp.Names)
+
+# 1) select variables but keep in MultiAssayExperiment format; 2) intersectionColumns selects only individuals with complete data; 3) wideFormat returns as a DataFrame
+helix_ma_complete <- intersectColumns(helix_ma[variables, ,])
+
+# Create a list to store data frames from each assay
+assay_data_list <- lapply(experiments(helix_ma_complete), function(assay) {
+  # Convert each assay to data frame
+  assay_df <- as.data.frame(assay)
+  return(assay_df)
+})
+
+
+# Merge all data frames 
+d <- as.data.frame(t(do.call(rbind, assay_data_list)))
+d[,c("covariates.h_cohort","covariates.e3_sex_None","covariates.h_edumc_None", "proteome.cov.h_ethnicity_cauc")] <- lapply(d[,c("covariates.h_cohort","covariates.e3_sex_None","covariates.h_edumc_None", "proteome.cov.h_ethnicity_cauc")], as.factor)
+cols_to_numeric <- setdiff(colnames(d), c("covariates.h_cohort", "covariates.e3_sex_None", "covariates.h_edumc_None", "proteome.cov.h_ethnicity_cauc"))
+d[,cols_to_numeric] <- lapply(d[,cols_to_numeric], as.numeric)
+
+col_data <- as.data.frame(colData(helix_ma_complete))[-1]
+d <- cbind(d, col_data)
 
 # Create  design matrix
-X <- d[,paste0("genome_", snp.Names)]
+X <- d[,paste0("genome.", snp.Names)]
 names(X) <- snp.Names
 X <- as.matrix(X)
 
@@ -90,12 +109,10 @@ Y <- d[,outcome.Name] # outcome
 if(outcome.Name=="hs_bmi_c_cat") { Y <- ifelse(as.numeric(Y)>=3, 1, 0)}
 
 # Create the covariate design matrix
-U <- d[,c(paste0("covariates_", covariate.Names[1:5]), paste0("proteome.cov_", covariate.Names[6:7]))]
+U <- as.data.frame(d[,c(paste0("covariates.", covariate.Names[1:5]), paste0("proteome.cov.", covariate.Names[6:8]))])
 names(U) <- covariate.Names
-U[,c("h_cohort","e3_sex_None","h_edumc_None")] <- lapply(U[,c("h_cohort","e3_sex_None","h_edumc_None")], factor)
-U[,c("h_mbmi_None", "h_age_None","ethn_PC1","ethn_PC2")] <- lapply(U[,c("h_mbmi_None", "h_age_None","ethn_PC1","ethn_PC2")], as.numeric)
 U <- model.matrix(as.formula(paste("~-1+", paste(covariate.Names, collapse="+"))), data=U) 
-
+U <- U[,-14]
 
 # Other variables for analysis
 N <- nrow(d) # number of individuals in the analysis
@@ -110,9 +127,9 @@ P <- ncol(X)  # number of SNPs in the matrix X
 
 ### Plot of Genetic Ancestry as Estimated by Prinicpal Components
 ```{r Genome: PC plot, echo=TRUE}
-plot(d$proteome.cov_ethn_PC1, d$proteome.cov_ethn_PC2, pch=16, col=ifelse(d$proteome.cov_h_ethnicity_cauc=="yes", 1, 2),
+plot(d$proteome.cov.ethn_PC1, d$proteome.cov.ethn_PC2, pch=16, col=ifelse(d$proteome.cov.h_ethnicity_cauc=="yes", 1, 2),
      xlab="Component 1", ylab="Component 2")
-legend(x="topleft", legend=c("Caucasian", "Other"), col=c(1,2), pch=16)
+legend(x="topleft", legend=c("European Ancestry", "Other"), col=c(1,2), pch=16)
 
 ```
 

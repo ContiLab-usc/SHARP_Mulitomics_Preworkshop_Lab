@@ -57,10 +57,11 @@ options(warn=-1)
 codebook <- read.table(paste0(work.dir, "/Data/codebook.txt"), sep="\t", header=T)
 
 # Outcome
-outcome.Name <- "hs_bmi_c_cat" # "hs_asthma" # "hs_bmi_c_cat" "hs_zbmi_who" "e3_bw" 
+#outcome.Name <- "hs_bmi_c_cat" # "hs_asthma" # "hs_bmi_c_cat" "hs_zbmi_who" "e3_bw" 
+outcome.Name <- "hs_bmi_c_cat"
 
 # Covariates
-covariate.Names <- c("h_mbmi_None","e3_sex_None","h_age_None","h_cohort","h_edumc_None")
+covariate.Names <- c("h_mbmi_None","e3_sex_None","h_age_None","h_cohort","h_edumc_None","ethn_PC1",     "ethn_PC2")
 
 # Exposure related
 exposure.group <- "Organochlorines" # {"Metals", "Organochlorines", "Organophosphate pesticides", "PBDE", "PFAS", "Phenols", "Phthalates", "All"}
@@ -74,7 +75,7 @@ univariate <- T
 ridge <- T
 lasso <- T
 elasticnet <- T
-bayesian.selection <- F
+bayesian.selection <- T
 
 ```
 
@@ -113,12 +114,32 @@ The first goal is often explored via multivariable regression and we provide som
 ```{r Exposome: Processing the Data, echo=TRUE}
 load(paste0(work.dir, "/Data/HELIX.MultiAssayExperiment.RData"))
 
+ # 1) select variables but keep in MultiAssayExperiment format; 2) intersectionColumns selects only individuals with complete data; 3) wideFormat returns as a DataFrame
+
 variables <- c(covariate.Names, exposure.Names)
-d <- wideFormat(intersectColumns(helix_ma[variables, ,]), colDataCols=outcome.Name) # 1) select variables but keep in MultiAssayExperiment format; 2) intersectionColumns selects only individuals with complete data; 3) wideFormat returns as a DataFrame
+helix_ma_complete <- intersectColumns(helix_ma[variables, ,])
+
+# Create a list to store data frames from each assay
+assay_data_list <- lapply(experiments(helix_ma_complete), function(assay) {
+  # Convert each assay to data frame
+  assay_df <- as.data.frame(assay)
+  return(assay_df)
+})
+
+
+# Merge all data frames 
+d <- as.data.frame(t(do.call(rbind, assay_data_list)))
+
+d[,c("covariates.h_cohort","covariates.e3_sex_None","covariates.h_edumc_None")] <- lapply(d[,c("covariates.h_cohort","covariates.e3_sex_None","covariates.h_edumc_None")], as.factor)
+cols_to_numeric <- setdiff(colnames(d), c("covariates.h_cohort", "covariates.e3_sex_None", "covariates.h_edumc_None"))
+d[,cols_to_numeric] <- lapply(d[,cols_to_numeric], as.numeric)
+
+col_data <- as.data.frame(colData(helix_ma_complete))[-1]
+d <- cbind(d, col_data)
 
 
 # Create exposure design matrix
-X <- as.data.frame(apply(d[,paste("exposome",exposure.Names,sep="_")],2,as.numeric))
+X <- as.data.frame(apply(d[,paste("exposome",exposure.Names,sep=".")],2,as.numeric))
 names(X) <- exposure.Names
 X <- scale(X, center=T, scale=T)
 
@@ -128,11 +149,10 @@ if(outcome.Name=="hs_bmi_c_cat") { Y <- ifelse(as.numeric(Y)>=3, 1, 0)}
 if(outcome.Name=="e3_bw") { Y <- ifelse(as.numeric(Y)<2500, 1, 0)}
 
 # Create the covariate design matrix
-U <- as.data.frame(d[,paste("covariates",covariate.Names,sep="_")])
+U <- as.data.frame(d[,c(paste0("covariates.", covariate.Names[1:5]), paste0("proteome.cov.", covariate.Names[6:7]))])
 names(U) <- covariate.Names
-U[,c("h_cohort","e3_sex_None","h_edumc_None")] <- lapply(U[,c("h_cohort","e3_sex_None","h_edumc_None")], factor)
-U[,c("h_mbmi_None", "h_age_None")] <- lapply(U[,c("h_mbmi_None", "h_age_None")], as.numeric)
-U <- model.matrix(as.formula(paste("~-1+", paste(covariate.Names, collapse="+"))), data=U)
+U[,c("h_cohort","e3_sex_None")] <- lapply(U[,c("h_cohort","e3_sex_None")], factor)
+U <- model.matrix(as.formula(paste("~-1+", paste(covariate.Names, collapse="+"))), data=U) 
 
 # Other variables for analysis
 N <- nrow(d) # number of individuals in the analysis
@@ -187,7 +207,7 @@ fviz_dend(hc, k = 3, # Cut in groups
 if(univariate) {
   univariate.results <- t(sapply(1:P, FUN=function(p) {  # using index p facilitate write
     x <- X[,p]
-    reg <- glm(Y~x+U, family=binomial)    # perform logistic regression
+    reg <- glm(Y~x+U, family= "binomial")    # perform linear regression
     s.reg <- summary(reg)                 # get the summary for the regression
     c.reg <- s.reg$coef["x",]             # select the coefficients for the exposure
     write.table(t(c(exposure.Names[p], c.reg)), file="ExposomeUnivariateResults.txt", append=ifelse(p==1, F, T), quote=F, sep="\t", col.names=ifelse(p==1, T, F), row.names=F)
@@ -251,9 +271,9 @@ if(ridge) { ridge.coef }
 ## Exposome: LASSO regression
 ```{r Exposome: LASSO Regression, echo=TRUE}
 if(lasso) {
-  lasso.cv <- cv.glmnet(x=X, y=Y, family="binomial", alpha=1)  # alpha=1 is for lasso
+  lasso.cv <- cv.glmnet(x=X, y=Y, family= "binomial", alpha=1)  # alpha=1 is for lasso
   lasso.coef <- coef(lasso.cv, s = "lambda.min")
-  lasso.fit <- glmnet(x=X, y=Y, family="binomial", alpha=1)
+  lasso.fit <- glmnet(x=X, y=Y, family= "binomial", alpha=1)
 }
 ```
 

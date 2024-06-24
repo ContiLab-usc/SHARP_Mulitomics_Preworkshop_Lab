@@ -36,6 +36,7 @@ library(UpSetR)
 library(pls)
 library(corrplot)
 library(RColorBrewer)
+library(SummarizedExperiment)
 
 options(knitr.table.format = "html")
 knitr::opts_chunk$set(echo = TRUE)
@@ -74,7 +75,8 @@ knitr::include_graphics(paste0(work.dir, "/HELIX_Data.png"))
 <br>
 
 ## Data Processing and Organization {.tabset}
-```{r Data Processing and Organization, echo=TRUE}
+```{r Data Processing and Organization, echo=TRUE, warning = FALSE}
+# Load data
 load(paste0(work.dir, "/Data/exposome.RData"))
 load(paste0(work.dir, "/Data/proteome.RData"))
 load(paste0(work.dir, "/Data/genome.RData"))
@@ -83,26 +85,22 @@ load(paste0(work.dir, "/Data/metabol_urine.RData"))
 
 outdoor.exposures <- exposome[,c("ID", as.character(codebook$variable_name[codebook$domain=="Outdoor exposures"]))] %>% 
   column_to_rownames("ID") %>% 
-  t() %>%
-  DataFrame()
+  t() %>% DataFrame()
 indoor.air <- exposome[,c("ID", as.character(codebook$variable_name[codebook$domain=="Indoor air"]))] %>% 
   column_to_rownames("ID") %>% 
-  t() %>%
-  DataFrame()
+  t() %>% DataFrame()
 lifestyles <- exposome[,c("ID", as.character(codebook$variable_name[codebook$domain=="Lifestyles"]))] %>% 
   column_to_rownames("ID") %>% 
-  t() %>%
-  DataFrame()
+  t() %>% DataFrame()
 chemicals <- exposome[,c("ID", as.character(codebook$variable_name[codebook$domain=="Chemicals"]))] %>% 
   column_to_rownames("ID") %>% 
-  t() %>%
-  DataFrame()
+  t() %>% DataFrame()
 covariates <- covariates %>% 
   column_to_rownames("ID") %>% 
-  t() %>%
-  DataFrame()
+  t() %>% DataFrame()
 phenotype <- phenotype %>% as.data.frame() # use as ColData for MultiAssayExperiment format
 row.names(phenotype) <- paste0("X", phenotype$ID)
+phenotype <- phenotype %>% DataFrame()
 
 proteome.d <- proteome@assayData$exprs %>% DataFrame()
 proteome.cov <- proteome@phenoData@data
@@ -116,9 +114,10 @@ metabol_serum.d <- metabol_serum@assayData$exprs %>% DataFrame()
 metabol_serum.cov <- metabol_serum@phenoData@data
 metabol_serum.cov <- metabol_serum.cov[stats::complete.cases(metabol_serum.cov),] %>% t() %>% DataFrame()
 
+
 # note that we do not include the gene expression nor the methylation data in the MultiAssayExperiment object as they are large. We also don't recommend storing genomewide data in this format. However, we include a small (e.g. 1000 SNPs) "genome" germline genetics data as an example.
 helix_ma <- MultiAssayExperiment(
-  experiments= ExperimentList("outdoor.exposures"=outdoor.exposures,
+  experiments= ExperimentList("outdoor.exposures"= outdoor.exposures,
                               "indoor.air"=indoor.air,
                               "lifestyles"=lifestyles,
                               "exposome"=chemicals,
@@ -145,7 +144,7 @@ rm(metabol_urine.cov)
 rm(metabol_serum.d)
 rm(metabol_serum.cov)
 rm(G)
-#save(paste0(work.dir, "/Data/HELIX.MultiAssayExperiment.RData")) # code to save if needed
+save(helix_ma, file=paste0(work.dir, "/Data/HELIX.MultiAssayExperiment.RData")) # code to save if needed
 ```
 
 ### Codebook for Exposures, Covariates, and Phenotypes

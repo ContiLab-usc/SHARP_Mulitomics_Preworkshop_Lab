@@ -25,6 +25,7 @@ library(gap)
 library(factoextra)
 library(gplots)
 library(MultiAssayExperiment)
+library(SummarizedExperiment)
 library(UpSetR)
 library(pls)
 library(corrplot)
@@ -49,7 +50,15 @@ options(warn=-1)
 ```
 
 
-Welcome to the SHARP Multi-omics Workshop. The goal of this workshop is to explore statistical methods for the analysis of multi-omic (or multi-view or multi-layer) data in observational studies. From this perspective, many population based or observational studies supplement a primary goal of investigating a risk factor on an outcome with additional omic data to better characterize the risk factors (e.g. germline genetics, exposomics), provide measurements for intermediate variables (e.g. transcriptomics, proteomics, metabolomics, and the microbiome), and/or to define a specific outcome of interest such as a single or multiple biomarkers. While all omic measurements often share a ‘high-dimensional” aspect, the different omic ‘dimensions’ can vary extensively in their scale of measurement, correlation structure, and strength and proportion of associations. In this context, the investigator is often confronted with an analytic decision between simplicity and complexity. Simple approaches often treat sets of variables in a pairwise independent manner sacrificing joint evaluation for benefits in interpretability. Complex methods often model joint correlation structures, but can sacrifice ease of interpretation.
+Welcome to the SHARP Multi-omics Workshop. 
+
+To facilitate the sessions and topics covered during the workshop we have created a pre-workshop lab. The idea of this pre-workshop lab is to provide a self guided tour to familiarize you with the data and basic statistical analyses that will serve as the foundation for content presented in the SHARP Multi-omics Workshop.
+
+Each section consists of a R markdown file (.Rmd) and an .html file. The html file can be opened via a web browser and provides a formatted version to go through the presented material. At each stage, code can be revealed by clicking on the "code" button. As an alternative, the .Rmd files can be opened within R Studio and each code chunk can be run to explore the analysis in detail. In addition, the .Rmd files (include this file "PreworkshopLab.Rmd" can be "knitted" to create the html file by clicking the "knit" button in Rstudio).
+
+The content in this pre-workshop will be discussed within the first session of the workshop to provide more background and context. 
+
+The goal of SHARP Multi-omics Workshop is to explore statistical methods for the analysis of multi-omic (or multi-view or multi-layer) data in observational studies. From this perspective, many population based or observational studies supplement a primary goal of investigating a risk factor on an outcome with additional omic data to better characterize the risk factors (e.g. germline genetics, exposomics), provide measurements for intermediate variables (e.g. transcriptomics, proteomics, metabolomics, and the microbiome), and/or to define a specific outcome of interest such as a single or multiple biomarkers. While all omic measurements often share a ‘high-dimensional” aspect, the different omic ‘dimensions’ can vary extensively in their scale of measurement, correlation structure, and strength and proportion of associations. In this context, the investigator is often confronted with an analytic decision between simplicity and complexity. Simple approaches often treat sets of variables in a pairwise independent manner sacrificing joint evaluation for benefits in interpretability. Complex methods often model joint correlation structures, but can sacrifice ease of interpretation.
 
 Conceptually, multi-omic data can be integrated following several philosophical approaches as summerized in Picard et al. 2021:
 
@@ -92,12 +101,6 @@ To better understand the elements of each type of approach, for the workshop we 
 **D. Mediation**: To remain connected to the original biological hypothesis that often guides a study, mediation analysis strives to link the relationships between three sets of variables: 1) the risk factors; 2) the mediators or intermediates; and 3) the outcome. Omic data can be measured for each type of variable (most often on the risk factors and/or the intermediates) and high dimensional mediation techniques (including the incorproation of clustering or latent estimation) can be used for analysis. 
 
 Overall, we focus on statistical analyses for association testing with multi-omic data. We will not focus on the "lab-based" methods and techniques for measuring each type of omic data set or the omic-specific quality control or processing required and crucial for successful evaluation and use of omic data. We feel that there are ample training opportunities available that describe the details of these analyses for each type of omic data. 
-
-To facilitate the sessions and topics covered during the workshop we have created a pre-workshop lab. The idea of this pre-workshop lab is to provide a self guided tour to familiarize you with the data and basic statistical analyses that will serve as the foundation for content presented in the SHARP Multi-omics Workshop.
-
-Each section consists of a R markdown file (.Rmd) and an .html file. The html file can be opened via a web browser and provides a formatted version to go through the presented material. At each stage, code can be revealed by clicking on the "code" button. As an alternative, the .Rmd files can be opened within R Studio and each code chunk can be run to explore the analysis in detail. In addition, the .Rmd files (include this file "PreworkshopLab.Rmd" can be "knitted" to create the html file by clicking the "knit" button in Rstudio).
-
-The content in this pre-workshop will be discussed within the first session of the workshop to provide more background and context. 
 
 
 # 1. Data Description

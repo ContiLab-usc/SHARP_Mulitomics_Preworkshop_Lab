@@ -77,7 +77,7 @@ In this example, we investigate approach #1 in which all pairwise regressions ar
 codebook <- read.table(paste0(work.dir, "/Data/codebook.txt"), sep="\t", header=T)
 
 # Covariates
-covariate.Names <- c("e3_sex_None","h_cohort", "age_sample_years","ethn_PC1","ethn_PC2","hs_dift_mealblood_imp","blood_sam4")
+covariate.Names <- c("h_mbmi_None","e3_sex_None","h_age_None","h_cohort","h_edumc_None","ethn_PC1",     "ethn_PC2")
 
 # Exposure related
 exposure.group <- "Organochlorines" #Organochlorines" # {"Metals", "Organochlorines", "Organophosphate pesticides", "PBDE", "PFAS", "Phenols", "Phthalates", "All"}
@@ -99,24 +99,41 @@ univariate <- T
 load(paste0(work.dir, "/Data/HELIX.MultiAssayExperiment.RData"))
 
 variables <- c(covariate.Names, exposure.Names, proteome.Names)
-d <- wideFormat(intersectColumns(helix_ma[variables, ,])) # 1) select variables but keep in MultiAssayExperiment format; 2) intersectionColumns selects only individuals with complete data; 3) wideFormat returns as a DataFrame
 
+# 1) select variables but keep in MultiAssayExperiment format; 2) intersectionColumns selects only individuals with complete data; 3) wideFormat returns as a DataFrame
+helix_ma_complete <- intersectColumns(helix_ma[variables, ,])
+
+# Create a list to store data frames from each assay
+assay_data_list <- lapply(experiments(helix_ma_complete), function(assay) {
+  # Convert each assay to data frame
+  assay_df <- as.data.frame(assay)
+  return(assay_df)
+})
+
+
+# Merge all data frames 
+d <- as.data.frame(t(do.call(rbind, assay_data_list)))
+d[,c("covariates.h_cohort","covariates.e3_sex_None","covariates.h_edumc_None")] <- lapply(d[,c("covariates.h_cohort","covariates.e3_sex_None","covariates.h_edumc_None")], as.factor)
+cols_to_numeric <- setdiff(colnames(d), c("covariates.h_cohort", "covariates.e3_sex_None", "covariates.h_edumc_None"))
+d[,cols_to_numeric] <- lapply(d[,cols_to_numeric], as.numeric)
+
+col_data <- as.data.frame(colData(helix_ma_complete))[-1]
+d <- cbind(d, col_data)
 
 # Create  design matrix
-X <- as.data.frame(d[,paste("proteome",proteome.Names,sep="_")])
+X <- as.data.frame(d[,paste("proteome",proteome.Names,sep=".")])
 names(X) <- proteome.Names
 X <- scale(X, center=T, scale=T)
 
 # Create exposure design matrix
-W <- as.data.frame(apply(d[,paste("exposome",exposure.Names,sep="_")],2,as.numeric))
+W <- as.data.frame(apply(d[,paste("exposome",exposure.Names,sep=".")],2,as.numeric))
 names(W) <- exposure.Names
 W <- scale(W, center=T, scale=T)
 
 # Create the covariate design matrix
-U <- d[,c(paste0("covariates_", covariate.Names[1:2]), paste0("metabol_urine.cov_", covariate.Names[3:7]))]
+U <- as.data.frame(d[,c(paste0("covariates.", covariate.Names[1:5]), paste0("proteome.cov.", covariate.Names[6:7]))])
 names(U) <- covariate.Names
 U[,c("h_cohort","e3_sex_None")] <- lapply(U[,c("h_cohort","e3_sex_None")], factor)
-U[,c("age_sample_years","ethn_PC1","ethn_PC2","hs_dift_mealblood_imp","blood_sam4")] <- lapply(U[,c("age_sample_years","ethn_PC1","ethn_PC2","hs_dift_mealblood_imp","blood_sam4")], as.numeric)
 U <- model.matrix(as.formula(paste("~-1+", paste(covariate.Names, collapse="+"))), data=U) 
 
 # Other variables for analysis

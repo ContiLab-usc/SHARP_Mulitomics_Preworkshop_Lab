@@ -24,4 +24,4 @@ if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
 if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
 BiocManager::install("MultiAssayExperiment")
 BiocManager::install("Biobase")
-
+BiocManager::install("SummarizedExperiment")
